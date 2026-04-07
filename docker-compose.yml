@@ -1,0 +1,25 @@
+services:
+  dashboard:
+    build:
+      context: ..
+      dockerfile: docker-project/Dockerfile
+    container_name: 64blit-dashboard
+    network_mode: host
+    environment:
+      - VIRTUAL_DESKTOP=false
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - GEMINI_KEY=${GEMINI_KEY}
+      - OPENROUTER_KEY=${OPENROUTER_KEY}
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN}
+      - TUNNEL_NAME=${TUNNEL_NAME}
+      - DISPLAY=:0
+      - XAUTHORITY=/home/nimda/.Xauthority
+      - XDG_RUNTIME_DIR=/run/user/1000
+    volumes:
+      - ./data/picoclaw:/home/nimda/.picoclaw
+      - ./data/spacebot:/home/nimda/.spacebot
+      - ./data/cloudflared:/home/nimda/.cloudflared
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - /home/nimda/.Xauthority:/home/nimda/.Xauthority:ro
+      - /run/user/1000/pulse:/run/user/1000/pulse
+    restart: always

@@ -1,0 +1,20 @@
+services:
+  dashboard:
+    build:
+      context: ..
+      dockerfile: docker-project/Dockerfile
+    container_name: 64blit-dashboard-windows
+    ports:
+      - "18790:18790"
+    environment:
+      - VIRTUAL_DESKTOP=false
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - GEMINI_KEY=${GEMINI_KEY}
+      - OPENROUTER_KEY=${OPENROUTER_KEY}
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN}
+      - TUNNEL_NAME=${TUNNEL_NAME}
+    volumes:
+      - ./data/picoclaw:/home/nimda/.picoclaw
+      - ./data/spacebot:/home/nimda/.spacebot
+      - ./data/cloudflared:/home/nimda/.cloudflared
+    restart: always
