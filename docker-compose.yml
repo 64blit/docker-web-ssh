@@ -7,6 +7,7 @@ services:
     network_mode: host
     environment:
       - VIRTUAL_DESKTOP=false
+      - START_SPACEBOT=${START_SPACEBOT:-false}
       - DISCORD_TOKEN=${DISCORD_TOKEN}
       - GEMINI_KEY=${GEMINI_KEY}
       - OPENROUTER_KEY=${OPENROUTER_KEY}

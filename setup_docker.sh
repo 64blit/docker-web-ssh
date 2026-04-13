@@ -31,6 +31,7 @@ if [ ! -f .env ]; then
 DISCORD_TOKEN=your_discord_token_here
 GEMINI_KEY=your_gemini_key_here
 OPENROUTER_KEY=your_openrouter_key_here
+START_SPACEBOT=false
 # Cloudflare Tunnel Configuration
 # Option A: Use a Tunnel Token (Recommended for Docker)
 TUNNEL_TOKEN=
@@ -46,9 +47,10 @@ docker compose up -d --build
 
 echo ""
 echo "✅ SUCCESS! The dashboard should be starting up."
-echo "Dashboard: http://localhost:18790"
-echo "Terminal:  http://localhost:7681"
-echo "IDE:       http://localhost:8080"
-echo "VNC:       http://localhost:6082"
+echo "Dashboard (Main): http://localhost:18790"
+echo "Terminal (Direct): http://localhost:7681"
+echo "IDE (Direct):      http://localhost:8080"
+echo "VNC:               http://localhost:6082"
 echo ""
+echo "Note: Terminal and IDE are also accessible via tabs in the Main Dashboard."
 echo "Use 'docker compose logs -f' to see the progress."

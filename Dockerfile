@@ -64,8 +64,7 @@ RUN mkdir -p /home/nimda/_SPACE/dash/static \
     /home/nimda/config/agents
 
 # Copy Dashboard source and static files
-COPY --chown=nimda:nimda _SPACE/dash/dashboard.go /home/nimda/_SPACE/dash/
-COPY --chown=nimda:nimda _SPACE/dash/static/ /home/nimda/_SPACE/dash/static/
+COPY --chown=nimda:nimda _SPACE/dash/ /home/nimda/_SPACE/dash/
 COPY --chown=nimda:nimda _SPACE/index.html /home/nimda/_SPACE/index.html
 
 # Pre-compile the Go dashboard
@@ -88,7 +87,8 @@ COPY docker-project/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 # Entrypoint script
 COPY docker-project/entrypoint.sh /entrypoint.sh
 COPY docker-project/run_cloudflared.sh /usr/local/bin/run_cloudflared.sh
-RUN chmod +x /entrypoint.sh /usr/local/bin/run_cloudflared.sh
+COPY docker-project/run_spacebot.sh /usr/local/bin/run_spacebot.sh
+RUN chmod +x /entrypoint.sh /usr/local/bin/run_cloudflared.sh /usr/local/bin/run_spacebot.sh
 
 # Expose the main dashboard port
 EXPOSE 18790
