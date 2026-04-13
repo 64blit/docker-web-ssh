@@ -1,0 +1,32 @@
+# 64blit Dashboard Docker: LLM/Agent Guide
+
+## 🦞 Context
+This repository contains a containerized version of the 64blit unified dashboard, which includes ttyd (Terminal), code-server (IDE), Spacebot (Gateway), and a Go-based dashboard. It is managed via Docker Compose and Supervisor.
+
+## 🚀 Deployment Instructions for Agents
+1. **Clone & Enter:** `git clone https://github.com/64blit/docker-web-ssh.git && cd docker-web-ssh`
+2. **Initial Setup:** Run `./setup_docker.sh`. This will:
+   - Install Docker/Docker Compose (if missing).
+   - Create required data directories (`data/`).
+   - Create a template `.env` file.
+   - Build and start the containers.
+3. **Configure Environment:** Edit `.env` with:
+   - `DISCORD_TOKEN`, `GEMINI_KEY`, `OPENROUTER_KEY` for Spacebot.
+   - `TUNNEL_TOKEN` for Cloudflare Zero Trust.
+4. **Cloudflare Tunnel:** 
+   - Get a Tunnel Token from [Cloudflare Zero Trust](https://one.dash.cloudflare.com/).
+   - Add a Public Hostname pointing to `http://localhost:18790`.
+5. **Auto-Start:** The `docker-compose.yml` is configured with `restart: always`. Ensure the Docker service itself is enabled on the host: `sudo systemctl enable docker`.
+
+## 🛠️ Maintenance Prompt
+"I want you to manage the 64blit-dashboard Docker project. Please:
+1. Ensure all services in `supervisord.conf` are running correctly by checking `docker compose logs -f`.
+2. To update the project, pull the latest changes from git and run `docker compose up -d --build`.
+3. If I need to add a new service, add it to `supervisord.conf` and update the `Dockerfile` to install the dependency.
+4. Keep the Cloudflare Tunnel healthy and verify the `.env` configuration is complete."
+
+## 📁 Key Files
+- `Dockerfile`: System dependencies and multi-service installation.
+- `supervisord.conf`: Process manager for ttyd, code-server, dashboard, etc.
+- `docker-compose.yml`: Resource and network orchestration.
+- `setup_docker.sh`: One-click installation script.
