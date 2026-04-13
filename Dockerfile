@@ -5,7 +5,6 @@ FROM ubuntu:24.04
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install system dependencies
-# Added: xvfb, lxde-core, xterm for self-contained desktop fallback
 RUN apt-get update && apt-get install -y \
     curl \
     wget \
@@ -63,15 +62,20 @@ RUN mkdir -p /home/nimda/_SPACE/dash/static \
     /home/nimda/skills \
     /home/nimda/config/agents
 
-# Copy Dashboard source and static files
+# Copy Dashboard source and static files (now in the same context)
 COPY --chown=nimda:nimda _SPACE/dash/ /home/nimda/_SPACE/dash/
 COPY --chown=nimda:nimda _SPACE/index.html /home/nimda/_SPACE/index.html
 
 # Pre-compile the Go dashboard
 RUN cd /home/nimda/_SPACE/dash && go build -o dashboard dashboard.go
 
-# Copy Spacebot (Assuming it exists in the build context)
-COPY --chown=nimda:nimda spacebot-v0.3.3-x86_64-unknown-linux-gnu/spacebot /home/nimda/spacebot
+# Install Spacebot (v0.4.1)
+RUN wget https://github.com/64blit/spacebot/releases/download/v0.4.1/spacebot-v0.4.1-x86_64-unknown-linux-gnu.tar.gz && \
+    tar -xzf spacebot-v0.4.1-x86_64-unknown-linux-gnu.tar.gz && \
+    mv spacebot-v0.4.1-x86_64-unknown-linux-gnu/spacebot /home/nimda/spacebot && \
+    rm -rf spacebot-v0.4.1-x86_64-unknown-linux-gnu* && \
+    chmod +x /home/nimda/spacebot && \
+    chown nimda:nimda /home/nimda/spacebot
 
 # Copy Pinchtab related files
 COPY --chown=nimda:nimda pinchtab_mcp.py /home/nimda/pinchtab_mcp.py
@@ -82,12 +86,12 @@ COPY --chown=nimda:nimda _SPACE/setup_picoclaw.sh /home/nimda/_SPACE/
 
 # Setup Supervisor configuration
 USER root
-COPY docker-project/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 # Entrypoint script
-COPY docker-project/entrypoint.sh /entrypoint.sh
-COPY docker-project/run_cloudflared.sh /usr/local/bin/run_cloudflared.sh
-COPY docker-project/run_spacebot.sh /usr/local/bin/run_spacebot.sh
+COPY entrypoint.sh /entrypoint.sh
+COPY run_cloudflared.sh /usr/local/bin/run_cloudflared.sh
+COPY run_spacebot.sh /usr/local/bin/run_spacebot.sh
 RUN chmod +x /entrypoint.sh /usr/local/bin/run_cloudflared.sh /usr/local/bin/run_spacebot.sh
 
 # Expose the main dashboard port

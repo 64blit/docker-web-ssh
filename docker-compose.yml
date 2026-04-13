@@ -1,8 +1,8 @@
 services:
   dashboard:
     build:
-      context: ..
-      dockerfile: docker-project/Dockerfile
+      context: .
+      dockerfile: Dockerfile
     container_name: 64blit-dashboard
     network_mode: host
     environment:

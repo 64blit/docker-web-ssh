@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Live Stream (WebSocket)</title>
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; font-family: -apple-system, system-ui, sans-serif; }
+        #stream-container { 
+            position: relative; 
+            width: 100%; 
+            height: 100%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            background: radial-gradient(circle, #1a1a1a 0%, #000 100%);
+        }
+        #stream { 
+            max-width: 100%; 
+            max-height: 100%; 
+            object-fit: contain; 
+            cursor: crosshair; 
+            image-rendering: -webkit-optimize-contrast;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+            outline: none;
+        }
+        #status { 
+            position: absolute; 
+            top: 15px; 
+            left: 15px; 
+            color: #888; 
+            background: rgba(0,0,0,0.8); 
+            padding: 6px 12px; 
+            border-radius: 6px; 
+            font-size: 11px; 
+            font-weight: bold;
+            pointer-events: none; 
+            z-index: 10; 
+            border: 1px solid #333;
+            letter-spacing: 1px;
+            transition: all 0.3s;
+        }
+        .status-live { color: #00ffa3 !important; border-color: #00ffa344 !important; }
+        .status-error { color: #ff4d4d !important; border-color: #ff4d4d44 !important; }
+        
+        #controls-hint { 
+            position: absolute; 
+            bottom: 15px; 
+            left: 50%; 
+            transform: translateX(-50%); 
+            color: #666; 
+            background: rgba(0,0,0,0.8); 
+            padding: 6px 18px; 
+            border-radius: 20px; 
+            font-size: 10px; 
+            pointer-events: none; 
+            z-index: 10; 
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border: 1px solid #222;
+        }
+
+        #refresh-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(26, 26, 26, 0.8);
+            color: #00ffa3;
+            border: 1px solid #333;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            cursor: pointer;
+            z-index: 10;
+            transition: all 0.2s;
+        }
+        #refresh-btn:hover { background: #00ffa3; color: #000; }
+
+        #top-controls {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            display: flex;
+            gap: 10px;
+            z-index: 10;
+        }
+        #top-controls select {
+            background: rgba(26, 26, 26, 0.8);
+            color: #00ffa3;
+            border: 1px solid #333;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            cursor: pointer;
+            outline: none;
+        }
+        #top-controls button {
+            background: rgba(26, 26, 26, 0.8);
+            color: #00ffa3;
+            border: 1px solid #333;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            cursor: pointer;
+        }
+        #mobile-kbd-trigger {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+            width: 1px;
+            height: 1px;
+        }
+    </style>
+</head>
+<body>
+    <div id="status">CONNECTING...</div>
+    <audio id="audio-stream" style="display: none;"></audio>
+    <input type="text" id="mobile-kbd-trigger" autocomplete="off" autocapitalize="off">
+    <div id="top-controls">
+        <select id="quality-sel" onchange="connect()">
+            <option value="2">Quality: High</option>
+            <option value="5" selected>Quality: Med</option>
+            <option value="15">Quality: Low</option>
+            <option value="30">Quality: Mobile</option>
+        </select>
+        <select id="fps-sel" onchange="connect()">
+            <option value="60">60 FPS</option>
+            <option value="30">30 FPS</option>
+            <option value="20" selected>20 FPS</option>
+            <option value="10">10 FPS</option>
+            <option value="5">5 FPS</option>
+        </select>
+        <button id="refresh-btn" onclick="connect()">RECONNECT</button>
+        <button id="mute-btn" onclick="toggleMute()">MUTE</button>
+        <button id="fullscreen-btn" onclick="toggleFullscreen()">FULLSCREEN</button>
+        <button id="kbd-btn" onclick="triggerKeyboard()">KEYBOARD</button>
+    </div>
+    <div id="stream-container">
+        <img id="stream" draggable="false" tabindex="0">
+    </div>
+    <div id="controls-hint">High-Performance WebSocket Flow • 1920x1080 Optimized</div>
+
+    <script>
+        const stream = document.getElementById('stream');
+        const status = document.getElementById('status');
+        let ws = null;
+
+        function connect() {
+            if (ws) {
+                ws.onclose = null; // Prevent auto-reconnect trigger
+                ws.close();
+            }
+
+            const q = document.getElementById('quality-sel').value;
+            const fps = document.getElementById('fps-sel').value;
+            
+            localStorage.setItem('pico_live_q', q);
+            localStorage.setItem('pico_live_fps', fps);
+
+            status.innerText = 'CONNECTING...';
+            status.className = '';
+
+            const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${proto}//${location.host}/api/live/ws?fps=${fps}&scale=1280x720&q=${q}`;
+            console.log('Connecting to WebSocket:', wsUrl);
+            
+            ws = new WebSocket(wsUrl);
+            ws.binaryType = 'blob';
+
+            // Handle audio
+            const audio = document.getElementById('audio-stream');
+            audio.src = '/api/live/audio?t=' + Date.now();
+            audio.play().catch(e => console.log('Audio autoplay blocked, click anywhere to enable.'));
+
+            ws.onopen = () => {
+                status.innerText = '● LIVE';
+                status.className = 'status-live';
+            };
+
+            ws.onmessage = (event) => {
+                if (event.data instanceof Blob) {
+                    const url = URL.createObjectURL(event.data);
+                    const oldUrl = stream.src;
+                    stream.src = url;
+                    if (oldUrl.startsWith('blob:')) {
+                        URL.revokeObjectURL(oldUrl);
+                    }
+                }
+            };
+
+            ws.onclose = () => {
+                status.innerText = '○ OFFLINE';
+                status.className = 'status-error';
+                // Auto-reconnect after 2 seconds
+                setTimeout(connect, 2000);
+            };
+
+            ws.onerror = (err) => {
+                console.error('WebSocket error:', err);
+                status.innerText = '○ ERROR';
+                status.className = 'status-error';
+            };
+        }
+
+        function toggleMute() {
+            const audio = document.getElementById('audio-stream');
+            const btn = document.getElementById('mute-btn');
+            audio.muted = !audio.muted;
+            btn.innerText = audio.muted ? 'UNMUTE' : 'MUTE';
+        }
+
+        function toggleFullscreen() {
+            const container = document.getElementById('stream-container');
+            if (!document.fullscreenElement) {
+                container.requestFullscreen().catch(err => {
+                    console.error(`Error attempting to enable fullscreen: ${err.message}`);
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        const kbdTrigger = document.getElementById('mobile-kbd-trigger');
+        function triggerKeyboard() {
+            kbdTrigger.focus();
+        }
+
+        kbdTrigger.addEventListener('input', (e) => {
+            const val = kbdTrigger.value;
+            if (val.length > 0) {
+                for (let i = 0; i < val.length; i++) {
+                    sendInput({ action: 'type', key: val[i] });
+                }
+                kbdTrigger.value = '';
+            }
+        });
+
+        kbdTrigger.addEventListener('keydown', (e) => {
+            if (e.key === 'Backspace') {
+                sendInput({ action: 'key', key: 'BackSpace' });
+            } else if (e.key === 'Enter') {
+                sendInput({ action: 'key', key: 'Return' });
+            }
+        });
+
+        function sendInput(params) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify(params));
+            }
+        }
+
+        function getCoords(e) {
+            const rect = stream.getBoundingClientRect();
+            const nw = 1920; // Original width used in ffmpeg x11grab
+            const nh = 1080; // Original height
+            
+            const containerRatio = rect.width / rect.height;
+            const imgRatio = nw / nh;
+
+            let displayedWidth, displayedHeight, offsetX, offsetY;
+
+            if (containerRatio > imgRatio) {
+                displayedHeight = rect.height;
+                displayedWidth = rect.height * imgRatio;
+                offsetX = (rect.width - displayedWidth) / 2;
+                offsetY = 0;
+            } else {
+                displayedWidth = rect.width;
+                displayedHeight = rect.width / imgRatio;
+                offsetY = (rect.height - displayedHeight) / 2;
+                offsetX = 0;
+            }
+
+            const relativeX = e.clientX - rect.left - offsetX;
+            const relativeY = e.clientY - rect.top - offsetY;
+
+            const x = Math.round(relativeX * (nw / displayedWidth));
+            const y = Math.round(relativeY * (nh / displayedHeight));
+
+            return { 
+                x: Math.max(0, Math.min(nw, x.toString())), 
+                y: Math.max(0, Math.min(nh, y.toString())) 
+            };
+        }
+
+        stream.addEventListener('mousedown', (e) => {
+            stream.focus();
+            const coords = getCoords(e);
+            let button = "1"; // Left
+            if (e.button === 1) button = "2"; // Middle
+            if (e.button === 2) button = "3"; // Right
+            sendInput({ action: 'mousedown', x: coords.x.toString(), y: coords.y.toString(), button });
+        });
+
+        stream.addEventListener('mouseup', (e) => {
+            const coords = getCoords(e);
+            let button = "1";
+            if (e.button === 1) button = "2";
+            if (e.button === 2) button = "3";
+            sendInput({ action: 'mouseup', x: coords.x.toString(), y: coords.y.toString(), button });
+        });
+
+        stream.addEventListener('dblclick', (e) => {
+            const coords = getCoords(e);
+            let button = "1";
+            if (e.button === 1) button = "2";
+            if (e.button === 2) button = "3";
+            sendInput({ action: 'doubleclick', x: coords.x.toString(), y: coords.y.toString(), button });
+        });
+
+        let lastMove = 0;
+        stream.addEventListener('mousemove', (e) => {
+            const now = Date.now();
+            if (now - lastMove < 50) return; 
+            lastMove = now;
+            const coords = getCoords(e);
+            sendInput({ action: 'move', x: coords.x.toString(), y: coords.y.toString() });
+        });
+
+        stream.addEventListener('contextmenu', (e) => e.preventDefault());
+
+        stream.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            sendInput({ action: 'scroll', y: Math.round(e.deltaY).toString() });
+        }, { passive: false });
+
+        // Touch support
+        function handleTouch(e, action) {
+            if (e.touches.length > 0) {
+                const touch = e.touches[0];
+                const coords = getCoords({ clientX: touch.clientX, clientY: touch.clientY });
+                sendInput({ action: action, x: coords.x.toString(), y: coords.y.toString(), button: "1" });
+            }
+        }
+
+        stream.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            handleTouch(e, 'mousedown');
+        });
+
+        stream.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            // Touchend doesn't have coordinates usually in touches[], but changedTouches[]
+            if (e.changedTouches.length > 0) {
+                const touch = e.changedTouches[0];
+                const coords = getCoords({ clientX: touch.clientX, clientY: touch.clientY });
+                sendInput({ action: 'mouseup', x: coords.x.toString(), y: coords.y.toString(), button: "1" });
+            }
+        });
+
+        stream.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const now = Date.now();
+            if (now - lastMove < 50) return; 
+            lastMove = now;
+            handleTouch(e, 'move');
+        });
+
+        window.addEventListener('keydown', (e) => {
+            let key = e.key;
+            let isSpecial = false;
+
+            if (key === ' ') { key = 'space'; isSpecial = true; }
+            if (key === 'Control') { key = 'ctrl'; isSpecial = true; }
+            if (key === 'Alt') { key = 'alt'; isSpecial = true; }
+            if (key === 'Shift') { key = 'shift'; isSpecial = true; }
+            if (key === 'Enter') { key = 'Return'; isSpecial = true; }
+            if (key === 'Backspace') { key = 'BackSpace'; isSpecial = true; }
+            if (key === 'Escape') { key = 'Escape'; isSpecial = true; }
+            if (key === 'Tab') { key = 'Tab'; isSpecial = true; }
+            if (key === 'ArrowUp') { key = 'Up'; isSpecial = true; }
+            if (key === 'ArrowDown') { key = 'Down'; isSpecial = true; }
+            if (key === 'ArrowLeft') { key = 'Left'; isSpecial = true; }
+            if (key === 'ArrowRight') { key = 'Right'; isSpecial = true; }
+            if (key === 'Delete') { key = 'Delete'; isSpecial = true; }
+            if (key === 'Home') { key = 'Home'; isSpecial = true; }
+            if (key === 'End') { key = 'End'; isSpecial = true; }
+            if (key === 'PageUp') { key = 'Page_Up'; isSpecial = true; }
+            if (key === 'PageDown') { key = 'Page_Down'; isSpecial = true; }
+            
+            let prefix = "";
+            if (e.ctrlKey && key !== 'ctrl') prefix += "ctrl+";
+            if (e.altKey && key !== 'alt') prefix += "alt+";
+            if (e.shiftKey && key !== 'shift') prefix += "shift+";
+            if (e.metaKey && key !== 'meta') prefix += "super+";
+
+            if (key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+                sendInput({ action: 'type', key: e.key });
+            } else {
+                sendInput({ action: 'key', key: prefix + key });
+            }
+            
+            if (isSpecial || e.ctrlKey || e.altKey || e.metaKey) {
+                if (key !== 'F12' && key !== 'F11') {
+                    e.preventDefault();
+                }
+            }
+        });
+
+        // Start connection
+        window.addEventListener('load', () => {
+            const savedQ = localStorage.getItem('pico_live_q');
+            const savedFPS = localStorage.getItem('pico_live_fps');
+            if (savedQ) document.getElementById('quality-sel').value = savedQ;
+            if (savedFPS) document.getElementById('fps-sel').value = savedFPS;
+            connect();
+        });
+    </script>
+</body>
+</html>

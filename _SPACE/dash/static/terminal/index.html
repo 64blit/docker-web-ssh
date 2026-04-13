@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>PicoClaw Terminal</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            background: #000;
+            overflow: hidden;
+        }
+
+        #terminal-wrapper {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            background: #000;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: #000;
+        }
+    </style>
+</head>
+<body>
+    <div id="terminal-wrapper">
+        <iframe src="/ttyd/" id="ttyd-iframe" allow="clipboard-read; clipboard-write"></iframe>
+    </div>
+    <script>
+        const iframe = document.getElementById('ttyd-iframe');
+        
+        // Prevent browser context menu on the parent page
+        document.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+        });
+
+        iframe.onload = () => {
+            try {
+                // Prevent browser context menu inside the iframe
+                // We use the bubbling phase (default) to allow ttyd's own handlers to run first
+                iframe.contentWindow.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                });
+            } catch (err) {
+                console.error("Could not attach contextmenu listener to iframe:", err);
+            }
+        };
+    </script>
+</body>
+</html>
