@@ -222,8 +222,11 @@ func handleInputLogic(input InputMessage) {
 	var cmdArgs []string
 	switch input.Action {
 	case "move":
-		cmdArgs = []string{"mousemove", input.X, input.Y}
+	        cmdArgs = []string{"mousemove", input.X, input.Y}
+	case "rel_move":
+	        cmdArgs = []string{"mousemove_relative", "--", input.X, input.Y}
 	case "click":
+
 		button := input.Button
 		if button == "" { button = "1" }
 		cmdArgs = []string{"mousemove", input.X, input.Y, "click", button}
